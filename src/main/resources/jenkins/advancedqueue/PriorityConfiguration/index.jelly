@@ -17,11 +17,11 @@
 		</d:tag>
 	</d:taglib>
 	<l:layout norefresh="true" title="${%Job Priorities}">
-	 	<l:side-panel>
-            <l:tasks>
-                <l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}"/>
-            </l:tasks>
-        </l:side-panel>
+		<l:side-panel>
+			<l:tasks>
+				<l:task icon="images/24x24/up.gif" href="${rootURL}/" title="${%Back to Dashboard}"/>
+			</l:tasks>
+		</l:side-panel>
 		<l:main-panel>
 			<!-- make the page not so wide on large screens -->
 			<div class="col-xlg-14 col-lg-20 col-md-24">
@@ -30,69 +30,99 @@
 					<p>${%Assign Priorities by creating Job groups. Priorities are assigned top down by first match.}</p>
 				</div>
 				<f:form method="post" name="priorityConfigSubmit" action="priorityConfigSubmit">
-					<f:entry>
-						<f:repeatable var="jobGroup" items="${it.jobGroups}" header="Job group">
-							<local:blockWrapper>
-							   <f:entry title="${%Description}">
-										<f:textarea name="description" value="${jobGroup.description}"/>
-								</f:entry>
+					<f:repeatable var="jobGroup" items="${it.jobGroups}" header="Job group">
+						<local:blockWrapper>
+							<j:set var="currentStrategy" value="${jobGroup.jobGroupStrategy}"/>
+
+							<f:entry title="${%Description}">
+								<f:textarea name="description" value="${jobGroup.description}"/>
+							</f:entry>
+							<f:entry>
+								<f:dropdownList title="${%Jobs to include}" name="jobGroupStrategy">
+									<j:forEach var="descriptor" items="${it.jobInclusionStrategyDescriptors}" varStatus="loop">
+										<j:set var="isSelected" value="${(currentStrategy == null) || (currentStrategy.descriptor == descriptor)}"/>
+
+										<j:choose>
+											<j:when test="${dropdownListMode=='createSelectField'}">
+												<f:option value="${loop.index}" selected="${isSelected}">${descriptor.displayName}</f:option>
+											</j:when>
+
+											<j:when test="${dropdownListMode=='generateEntries'}">
+												<div class="dropdownList-start rowvg-start tr"/>
+
+												<j:choose>
+													<j:when test="${!isSelected}">
+														<l:ajax>
+															<j:set var="instance" value="${currentStrategy.descriptor==descriptor ? currentStrategy : null}" />
+															<st:include from="${descriptor}" page="${descriptor.configPage}" optional="true" />
+														</l:ajax>
+													</j:when>
+													<j:otherwise>
+														<l:ajax>
+															<j:set var="instance" value="${currentStrategy.descriptor==descriptor ? currentStrategy : null}" />
+															<st:include from="${descriptor}" page="${descriptor.configPage}" optional="true" />
+														</l:ajax>
+													</j:otherwise>
+												</j:choose>
+												<f:class-entry clazz="${descriptor.clazz.name}" />
+												<div class="dropdownList-end rowvg-end tr"/>
+											</j:when>
+										</j:choose>
+									</j:forEach>
+								</f:dropdownList>
+							</f:entry>
+							<f:entry title="Priority">
+								<select name="priority">
+									<j:forEach var="priority" items="${it.priorities}">
+										<j:if test="${priority.value == jobGroup.priority}">
+											<f:option value="${priority.value}" selected="true">${priority.name}</f:option>
+										</j:if>
+										<j:if test="${priority.value != jobGroup.priority}">
+											<f:option value="${priority.value}">${priority.name}</f:option>
+										</j:if>
+									</j:forEach>
+								</select>
+							</f:entry>
+							<f:entry title="Run Exclusive (experimental)" help="/descriptor/jenkins.advancedqueue.PriorityConfiguration/help/runExclusive">
+								<f:checkbox name="runExclusive" value="${jobGroup.runExclusive}" checked="${jobGroup.runExclusive}"/>
+							</f:entry>
+							<f:optionalBlock name="usePriorityStrategies" checked="${jobGroup.usePriorityStrategies}" title="${%Use additional rules when assigning a priority to a Job}">
 								<f:entry>
-									<j:set var="instance" value="${jobGroup}"/>
-									<f:dropdownDescriptorSelector title="${%Jobs to include}" field="jobGroupStrategy" descriptors="${it.jobInclusionStrategyDescriptors}"/>
-								</f:entry>
-								<f:entry title="Priority">
-									<select name="priority" class="setting-input dropdownList">
-										<j:forEach var="priority" items="${it.priorities}">
-											<j:if test="${priority.value == jobGroup.priority}">
-												<f:option value="${priority.value}" selected="true">${priority.name}</f:option>
-											</j:if>
-											<j:if test="${priority.value != jobGroup.priority}">
-												<f:option value="${priority.value}">${priority.name}</f:option>
-											</j:if>
-										</j:forEach>
-									</select>
-								</f:entry>
-								<f:entry title="Run Exclusive (experimental)" help="/descriptor/jenkins.advancedqueue.PriorityConfiguration/help/runExclusive">
-									<f:checkbox name="runExclusive" value="${jobGroup.runExclusive}" checked="${jobGroup.runExclusive}"/>
-								</f:entry>
-								<f:optionalBlock name="usePriorityStrategies" checked="${jobGroup.usePriorityStrategies}" title="${%Use additional rules when assigning a priority to a Job}">
-									<f:entry>
-										<f:repeatable var="holder" items="${jobGroup.priorityStrategies}" header="${%Priority Strategy}">
-											<local:blockWrapper>
-												<j:if test="${holder == null}">
-													<f:entry>
-														<f:dropdownDescriptorSelector descriptors="${it.getPriorityStrategyDescriptors()}" title="${%Select Strategy}"/>
-													</f:entry>
-												</j:if>
-												<j:if test="${holder != null}">
-													<j:set var="instance" value="${holder.priorityStrategy}" />
-													<j:set var="descriptor" value="${instance.descriptor}" />
-													<f:entry title="${descriptor.displayName}">
-														<input type="hidden" name="stapler-class" value="${descriptor.clazz.name}"/>
-														<st:include it="${descriptor}" page="${descriptor.configPage}" />
-													</f:entry>
-												</j:if>
+									<f:repeatable var="holder" items="${jobGroup.priorityStrategies}" header="${%Priority Strategy}">
+										<local:blockWrapper>
+											<j:if test="${holder == null}">
 												<f:entry>
-													<div align="right">
-														<f:repeatableDeleteButton />
-													</div>
+													<f:dropdownDescriptorSelector descriptors="${it.getPriorityStrategyDescriptors()}" title="${%Select Strategy}"/>
 												</f:entry>
-											</local:blockWrapper>
-										</f:repeatable>
-									</f:entry>
-								</f:optionalBlock>
-								<f:entry>
-									<div align="right">
-										<f:repeatableDeleteButton />
-									</div>
+											</j:if>
+											<j:if test="${holder != null}">
+												<j:set var="instance" value="${holder.priorityStrategy}" />
+												<j:set var="descriptor" value="${instance.descriptor}" />
+												<f:entry title="${descriptor.displayName}">
+													<input type="hidden" name="stapler-class" value="${descriptor.clazz.name}"/>
+													<st:include it="${descriptor}" page="${descriptor.configPage}" />
+												</f:entry>
+											</j:if>
+											<f:entry>
+												<div align="right">
+													<f:repeatableDeleteButton />
+												</div>
+											</f:entry>
+										</local:blockWrapper>
+									</f:repeatable>
 								</f:entry>
-							</local:blockWrapper>
-						</f:repeatable>
-						<br/>
-						<br/>
-						<f:entry>
-							<f:submit value="${%Save}" />
-						</f:entry>
+							</f:optionalBlock>
+							<f:entry>
+								<div align="right">
+									<f:repeatableDeleteButton />
+								</div>
+							</f:entry>
+						</local:blockWrapper>
+					</f:repeatable>
+					<br/>
+					<br/>
+					<f:entry>
+						<f:submit value="${%Save}" />
 					</f:entry>
 				</f:form>
 			</div>

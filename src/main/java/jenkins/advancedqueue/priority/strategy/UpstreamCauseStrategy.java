@@ -25,6 +25,7 @@ package jenkins.advancedqueue.priority.strategy;
 
 import hudson.Extension;
 import hudson.model.Cause;
+import hudson.model.CauseAction;
 import hudson.model.Cause.UpstreamCause;
 import hudson.model.Queue;
 
@@ -59,10 +60,11 @@ public class UpstreamCauseStrategy extends AbstractDynamicPriorityStrategy {
 
 	@CheckForNull
 	private UpstreamCause getUpstreamCause(@Nonnull Queue.Item item) {
-		List<Cause> causes = item.getCauses();
-		for (Cause cause : causes) {
-			if (cause.getClass() == UpstreamCause.class) {
-				return (UpstreamCause) cause;
+		CauseAction action = item.getAction(hudson.model.CauseAction.class);
+		if (action != null) {
+			UpstreamCause cause = action.findCause(hudson.model.Cause.UpstreamCause.class);
+			if (cause != null) {
+				return cause;
 			}
 		}
 		return null;
